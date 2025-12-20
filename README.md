@@ -1,1 +1,1 @@
-# Autoencodeurs-pour-le-clustering-et-la-d-tection-d-anomalies
+# Autoencodeurs pour le clustering et la détection d’anomalies : application en Maintenance Prédictive
