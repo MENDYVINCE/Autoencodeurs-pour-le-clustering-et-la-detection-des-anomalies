@@ -100,15 +100,3 @@ Le tableau de bord affiche :
 
 * Développement et entraînement : **Google Colab / environnement local**
 * Déploiement : **Streamlit (local ou cloud)**
-
----
-
-Si tu veux, je peux aussi te fournir :
-
-* 📂 **une structure de dossiers**
-* 🧾 **un README plus court**
-* 📊 **un plan de rapport technique**
-* 🎤 **un script pour la présentation vidéo**
-=======
-# Autoencodeurs pour le clustering et la détection d’anomalies : application en Maintenance Prédictive
->>>>>>> 877a270759661e3eb0615ee30c7e83419ceeb191
