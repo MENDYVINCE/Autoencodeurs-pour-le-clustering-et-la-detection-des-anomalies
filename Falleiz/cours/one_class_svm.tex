@@ -1,0 +1,325 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+
+% Configuration des boîtes
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{conceptbox}[1][]{
+  colback=blue!5!white,
+  colframe=blue!75!black,
+  title={\textbf{Concept Clé}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{mathbox}[1][]{
+  colback=green!5!white,
+  colframe=green!60!black,
+  title={\textbf{Fondement Mathématique}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{codebox}[1][]{
+  colback=gray!5!white,
+  colframe=gray!75!black,
+  title={\textbf{Implémentation Python}},
+  fonttitle=\bfseries,
+  breakable,
+  #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+  colback=red!5!white,
+  colframe=red!75!black,
+  title={\textbf{Attention}},
+  fonttitle=\bfseries,
+  enhanced,
+  #1
+}
+
+\newtcolorbox{examplebox}[1][]{
+  colback=orange!5!white,
+  colframe=orange!75!black,
+  title={\textbf{Exemple}},
+  fonttitle=\bfseries,
+  enhanced,
+  breakable,
+  #1
+}
+
+% Configuration du code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=pythonstyle}
+
+\title{\textbf{One-Class SVM} \\ \large Support Vector Machines pour la Détection d'Anomalies}
+\author{Cours de Machine Learning Non Supervisé}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Le \textbf{One-Class SVM} (OC-SVM) est une adaptation des Support Vector Machines pour la détection d'anomalies non supervisée.
+
+\begin{conceptbox}
+\textbf{Intuition Fondamentale}
+
+Contrairement au SVM classique qui sépare deux classes, le One-Class SVM cherche à :
+\begin{itemize}
+    \item Entourer les données normales dans un espace transformé
+    \item Séparer ces données de l'origine avec une marge maximale
+    \item Identifier comme anomalies les points qui tombent en dehors de cette région
+\end{itemize}
+\end{conceptbox}
+
+\section{Principe de Fonctionnement}
+
+\subsection{Transformation par Noyau}
+
+Comme les SVM classiques, on utilise le \textit{kernel trick} pour projeter les données dans un espace de dimension supérieure où elles deviennent séparables.
+
+\subsection{Séparation de l'Origine}
+
+L'algorithme cherche l'hyperplan qui :
+\begin{enumerate}
+    \item Sépare la majorité des points de l'origine
+    \item Maximise la distance (marge) à l'origine
+    \item Tolère quelques violations (points du mauvais côté)
+\end{enumerate}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.9]
+    % Axes
+    \draw[->] (-1,0) -- (6,0) node[right] {$x_1$};
+    \draw[->] (0,-1) -- (0,5) node[above] {$x_2$};
+    
+    % Origine
+    \node at (0,0) [circle,fill,inner sep=1.5pt,label=below left:Origine] {};
+    
+    % Points normaux
+    \foreach \x/\y in {2/3, 2.5/2.5, 3/3.5, 3.5/2, 4/3, 2.5/3.5, 3/4, 3.5/3}
+        \node at (\x,\y) [circle,fill=blue!60,inner sep=2pt] {};
+        
+    % Anomalie
+    \node at (5,1) [circle,fill=red!60,inner sep=2pt,label=right:Anomalie] {};
+    
+    % Hyperplan
+    \draw[thick, dashed] (1,4.5) -- (5,0.5) node[midway,above,sloped] {Frontière};
+    
+    % Marge
+    \draw[->, thick] (1.5,1) -- (2.2,2.2) node[midway, below right] {$\rho$};
+    
+    % Zone normale
+    \fill[blue, opacity=0.1] (1,4.5) -- (5,0.5) -- (6,5) -- (1,5) -- cycle;
+    \node at (4,4) [blue] {Zone Normale};
+\end{tikzpicture}
+\end{center}
+
+\section{Fondements Mathématiques}
+
+\begin{mathbox}
+\textbf{Formulation du Problème}
+
+On cherche à minimiser :
+$$ \min_{w, \xi, \rho} \frac{1}{2} ||w||^2 + \frac{1}{\nu n} \sum_{i=1}^{n} \xi_i - \rho $$
+
+Sous les contraintes :
+$$ (w \cdot \phi(x_i)) \geq \rho - \xi_i, \quad \xi_i \geq 0 $$
+
+Où :
+\begin{itemize}
+    \item $w$ : vecteur normal à l'hyperplan
+    \item $\rho$ : distance de l'hyperplan à l'origine (marge)
+    \item $\xi_i$ : variables de relâchement (slack variables)
+    \item $\nu \in (0, 1]$ : hyperparamètre de contrôle
+    \item $\phi(x)$ : transformation par noyau
+\end{itemize}
+\end{mathbox}
+
+\subsection{Fonction de Décision}
+
+Pour un nouveau point $x$, la décision est :
+$$ f(x) = \text{sign}((w \cdot \phi(x)) - \rho) $$
+
+\begin{itemize}
+    \item $f(x) = +1$ : Point normal (dans la région)
+    \item $f(x) = -1$ : Anomalie (hors de la région)
+\end{itemize}
+
+\section{Hyperparamètres}
+
+\subsection{Le paramètre nu ($\nu$)}
+
+C'est le paramètre le plus important :
+\begin{itemize}
+    \item \textbf{Borne supérieure} sur la fraction d'anomalies tolérées
+    \item \textbf{Borne inférieure} sur la fraction de vecteurs de support
+    \item Valeur typique : 0.01 à 0.1 (1\% à 10\%)
+\end{itemize}
+
+\begin{examplebox}
+Si vous fixez $\nu = 0.05$, vous indiquez que :
+\begin{itemize}
+    \item Au maximum 5\% des points d'entraînement peuvent être des anomalies
+    \item Au minimum 5\% des points seront des vecteurs de support
+\end{itemize}
+\end{examplebox}
+
+\subsection{Le Noyau (Kernel)}
+
+Le noyau RBF (Radial Basis Function) est le plus utilisé :
+$$ K(x, y) = \exp\left(-\gamma ||x - y||^2\right) $$
+
+\subsection{Le paramètre gamma ($\gamma$)}
+
+Contrôle la complexité de la frontière :
+\begin{itemize}
+    \item $\gamma$ \textbf{élevé} : Frontière complexe, risque de surapprentissage
+    \item $\gamma$ \textbf{faible} : Frontière lisse, meilleure généralisation
+    \item Valeur par défaut : $\gamma = \frac{1}{n_{features} \times \text{var}(X)}$
+\end{itemize}
+
+\section{Avantages et Limites}
+
+\subsection{Avantages}
+\begin{itemize}
+    \item Peut modéliser des frontières non linéaires complexes
+    \item Base théorique solide (théorie des SVM)
+    \item Efficace en haute dimension
+\end{itemize}
+
+\subsection{Limites}
+\begin{itemize}
+    \item \textbf{Complexité} : $O(n^2)$ à $O(n^3)$ (lent pour grands datasets)
+    \item \textbf{Sensibilité} : Très sensible au choix de $\nu$ et $\gamma$
+    \item \textbf{Scalabilité} : Difficile au-delà de 100 000 points
+\end{itemize}
+
+\begin{warningbox}
+Pour le dataset AI4I (10 000 lignes), One-Class SVM est utilisable mais peut prendre plusieurs secondes à minutes selon les paramètres.
+\end{warningbox}
+
+\section{Exemple de Code Python}
+
+\begin{codebox}
+\begin{lstlisting}
+from sklearn.svm import OneClassSVM
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+import numpy as np
+
+# 1. PRÉPARATION DES DONNÉES
+# La normalisation est CRUCIALE pour One-Class SVM
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 2. CONFIGURATION DU MODÈLE
+ocsvm = OneClassSVM(
+    kernel='rbf',      # Noyau gaussien
+    gamma='auto',      # gamma = 1 / (n_features * X.var())
+    nu=0.03            # On tolère 3% d'anomalies
+)
+
+# 3. ENTRAÎNEMENT
+print("Entraînement One-Class SVM...")
+ocsvm.fit(X_scaled)
+
+# 4. PRÉDICTION
+# Retourne +1 (normal) ou -1 (anomalie)
+predictions = ocsvm.predict(X_scaled)
+
+# 5. CONVERSION POUR ÉVALUATION
+# Nos labels : 0=Normal, 1=Panne
+y_pred = np.where(predictions == -1, 1, 0)
+
+# 6. ÉVALUATION
+print("Matrice de Confusion :")
+print(confusion_matrix(y, y_pred))
+
+print("\nRapport de Classification :")
+print(classification_report(y, y_pred, 
+                          target_names=['Normal', 'Panne']))
+
+# 7. SCORES BRUTS (pour analyse)
+# Plus le score est négatif, plus c'est une anomalie
+scores = ocsvm.decision_function(X_scaled)
+print(f"\nScore min (anomalie forte) : {scores.min():.4f}")
+print(f"Score max (normal fort) : {scores.max():.4f}")
+\end{lstlisting}
+\end{codebox}
+
+\section{Comparaison avec Autres Méthodes}
+
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Critère} & \textbf{IF} & \textbf{OC-SVM} & \textbf{LOF} \\
+\hline
+Complexité & $O(n \log n)$ & $O(n^2)$ & $O(n^2)$ \\
+Scalabilité & Excellente & Faible & Faible \\
+Frontières non-linéaires & Non & Oui & Oui \\
+Anomalies locales & Non & Non & Oui \\
+Sensibilité paramètres & Faible & Élevée & Moyenne \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Conclusion}
+
+One-Class SVM est une méthode puissante pour modéliser des frontières de normalité complexes. Elle excelle lorsque :
+\begin{itemize}
+    \item Les données normales forment une région compacte
+    \item La frontière entre normal et anormal est non linéaire
+    \item Le dataset n'est pas trop volumineux ($n < 50000$)
+\end{itemize}
+
+Pour des datasets plus grands ou des anomalies locales, préférer Isolation Forest ou LOF respectivement.
+
+\end{document}

@@ -148,19 +148,4 @@ else:
                     score_value = result.get('mse', result.get('score', 0))
                     st.metric(label=f"Score ({score_label})", value=f"{score_value:.4f}")
                     st.metric(label="Confiance", value=f"{result.get('confidence', 0):.1f} %")
-    
-    st.divider()
 
-    # --- Section d'exploration du Dataset ---
-    st.header(" 탐색 Explorateur du Jeu de Données")
-    st.markdown("Filtrez et triez le tableau pour trouver des points de données intéressants, puis chargez-les pour les tester.")
-
-    with st.form("load_row_form"):
-        col1, col2 = st.columns([1, 4])
-        row_index = col1.number_input("Index de la ligne à charger :", min_value=0, max_value=len(df)-1, step=1)
-        submit_load = col2.form_submit_button("📥 Charger la Ligne")
-        if submit_load:
-            load_specific_row(row_index)
-            st.success(f"Ligne {row_index} chargée. Modifiez les valeurs ou lancez la comparaison.")
-            
-    st.dataframe(df, use_container_width=True)

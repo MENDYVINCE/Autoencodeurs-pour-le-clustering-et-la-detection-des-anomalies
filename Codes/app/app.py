@@ -101,6 +101,64 @@ with col2:
 
 st.divider()
 
+# --- Matrices de Confusion ---
+st.header("📊 Matrices de Confusion des Modèles")
+
+# Tableau récapitulatif des performances
+st.subheader("📈 Comparaison des Performances")
+import pandas as pd
+
+performance_data = pd.DataFrame({
+    'Modèle': ['LSTM Autoencoder', 'Autoencodeur Dense', 'Isolation Forest', 'One-Class SVM', 'LOF'],
+    'Recall (%)': [95.9, 89.4, 41.9, 29.8, 26.9],
+    'Precision (%)': [76.0, 13.6, 47.3, 34.1, 26.9],
+    'F1-Score (%)': [84.8, 23.5, 44.4, 31.8, 26.9]
+})
+
+# Styling du dataframe
+st.dataframe(
+    performance_data.style.highlight_max(axis=0, subset=['Recall (%)', 'Precision (%)', 'F1-Score (%)'], color='lightgreen'),
+    use_container_width=True,
+    hide_index=True
+)
+
+st.markdown("---")
+
+# Affichage des matrices de confusion
+with st.expander("🔍 Voir les Matrices de Confusion", expanded=True):
+    st.markdown("### Autoencodeurs")
+    # Ligne 1: Autoencodeurs
+    col1, col2 = st.columns(2)
+    with col1:
+        st.image("assets/confusion_matrix_autoencoder.png", 
+                 caption="Autoencodeur Dense (Seuil 80%)",
+                 use_container_width=True)
+    with col2:
+        st.image("assets/confusion_matrix_lstm.png", 
+                 caption="🏆 LSTM Autoencoder (Seuil 99%) - Meilleur Modèle",
+                 use_container_width=True)
+    
+    st.markdown("### Méthodes Classiques")
+    # Ligne 2: Méthodes classiques
+    col3, col4 = st.columns(2)
+    with col3:
+        st.image("assets/confusion_matrix_isolation_forest.png", 
+                 caption="Isolation Forest",
+                 use_container_width=True)
+    with col4:
+        st.image("assets/confusion_matrix_ocsvm.png", 
+                 caption="One-Class SVM",
+                 use_container_width=True)
+    
+    # Ligne 3: LOF
+    col5, col6, col7 = st.columns([1, 2, 1])
+    with col6:
+        st.image("assets/confusion_matrix_lof.png", 
+                 caption="Local Outlier Factor (LOF)",
+                 use_container_width=True)
+
+st.divider()
+
 # --- Instructions ---
 with st.container():
     st.header("🚀 Pour Commencer")

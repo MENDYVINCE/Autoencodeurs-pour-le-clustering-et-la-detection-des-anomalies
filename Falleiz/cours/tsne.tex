@@ -1,0 +1,356 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+
+% Configuration des boîtes
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{conceptbox}[1][]{
+  colback=blue!5!white,
+  colframe=blue!75!black,
+  title={\textbf{Concept Clé}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{mathbox}[1][]{
+  colback=green!5!white,
+  colframe=green!60!black,
+  title={\textbf{Fondement Mathématique}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{codebox}[1][]{
+  colback=gray!5!white,
+  colframe=gray!75!black,
+  title={\textbf{Implémentation Python}},
+  fonttitle=\bfseries,
+  breakable,
+  #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+  colback=red!5!white,
+  colframe=red!75!black,
+  title={\textbf{Attention}},
+  fonttitle=\bfseries,
+  enhanced,
+  #1
+}
+
+\newtcolorbox{examplebox}[1][]{
+  colback=orange!5!white,
+  colframe=orange!75!black,
+  title={\textbf{Exemple}},
+  fonttitle=\bfseries,
+  enhanced,
+  breakable,
+  #1
+}
+
+% Configuration du code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=pythonstyle}
+
+\title{\textbf{t-SNE} \\ \large t-distributed Stochastic Neighbor Embedding \\ Visualisation de Données Haute Dimension}
+\author{Cours de Machine Learning Non Supervisé}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Le \textbf{t-SNE} (t-distributed Stochastic Neighbor Embedding) est une technique de réduction de dimensionnalité développée par Laurens van der Maaten et Geoffrey Hinton en 2008.
+
+\begin{conceptbox}
+\textbf{Objectif Principal}
+
+Contrairement à la PCA qui préserve les distances globales, t-SNE cherche à :
+\begin{itemize}
+    \item Préserver les \textbf{relations de voisinage local}
+    \item Projeter des données haute dimension en 2D ou 3D pour \textbf{visualisation}
+    \item Révéler la \textbf{structure en clusters} cachée dans les données
+\end{itemize}
+
+t-SNE est principalement un outil de \textbf{visualisation}, pas de réduction de dimension pour le machine learning.
+\end{conceptbox}
+
+\section{Pourquoi t-SNE après l'Espace Latent ?}
+
+\subsection{Le Problème de Visualisation}
+
+Après avoir entraîné un autoencodeur, vous obtenez un espace latent de dimension $d$ (par exemple, $d=2$ ou $d=32$).
+
+\begin{examplebox}
+\textbf{Cas Pratique : Votre Autoencodeur}
+
+\begin{itemize}
+    \item \textbf{Entrée} : 5 features (température, vitesse, couple, usure)
+    \item \textbf{Espace latent} : 2 dimensions
+    \item \textbf{Problème résolu ?} Oui, vous pouvez déjà visualiser en 2D !
+\end{itemize}
+
+\textbf{Mais si votre espace latent avait 32 dimensions ?}
+\begin{itemize}
+    \item Impossible de visualiser directement
+    \item t-SNE permet de passer de 32D à 2D tout en préservant les clusters
+\end{itemize}
+\end{examplebox}
+
+\subsection{Quand Utiliser t-SNE ?}
+
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Situation} & \textbf{t-SNE Utile ?} & \textbf{Raison} \\
+\hline
+Espace latent 2D & Non & Déjà visualisable \\
+Espace latent 3D & Optionnel & Peut améliorer la séparation \\
+Espace latent $>$ 3D & Oui & Indispensable pour visualiser \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{Principe de Fonctionnement}
+
+\subsection{Intuition}
+
+t-SNE fonctionne en deux étapes :
+\begin{enumerate}
+    \item \textbf{Espace original} : Calculer les probabilités de voisinage entre tous les points
+    \item \textbf{Espace réduit} : Placer les points en 2D de façon à reproduire ces probabilités
+\end{enumerate}
+
+\subsection{Algorithme Simplifié}
+
+\begin{mathbox}
+\textbf{Étape 1 : Similarités dans l'Espace Original}
+
+Pour chaque paire de points $(x_i, x_j)$ en haute dimension, on calcule :
+$$ p_{j|i} = \frac{\exp(-||x_i - x_j||^2 / 2\sigma_i^2)}{\sum_{k \neq i} \exp(-||x_i - x_k||^2 / 2\sigma_i^2)} $$
+
+Puis on symétrise :
+$$ p_{ij} = \frac{p_{j|i} + p_{i|j}}{2n} $$
+
+\textbf{Interprétation :} $p_{ij}$ mesure la probabilité que $x_i$ choisisse $x_j$ comme voisin.
+\end{mathbox}
+
+\begin{mathbox}
+\textbf{Étape 2 : Similarités dans l'Espace Réduit (2D)}
+
+Pour les points projetés $(y_i, y_j)$ en 2D, on utilise une distribution de Student (t) :
+$$ q_{ij} = \frac{(1 + ||y_i - y_j||^2)^{-1}}{\sum_{k \neq l} (1 + ||y_k - y_l||^2)^{-1}} $$
+
+\textbf{Pourquoi la distribution t ?}
+\begin{itemize}
+    \item Elle a des queues plus lourdes qu'une gaussienne
+    \item Permet de mieux séparer les clusters en 2D
+    \item Évite le "crowding problem" (entassement des points)
+\end{itemize}
+\end{mathbox}
+
+\begin{mathbox}
+\textbf{Étape 3 : Optimisation}
+
+On minimise la divergence de Kullback-Leibler entre $P$ et $Q$ :
+$$ \text{KL}(P||Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}} $$
+
+Cette optimisation se fait par descente de gradient.
+\end{mathbox}
+
+\section{Hyperparamètres Clés}
+
+\subsection{Perplexité (Perplexity)}
+
+C'est le paramètre le plus important.
+
+\begin{itemize}
+    \item \textbf{Définition} : Mesure du nombre effectif de voisins considérés pour chaque point
+    \item \textbf{Valeur typique} : 5 à 50 (défaut : 30)
+    \item \textbf{Effet} :
+    \begin{itemize}
+        \item Perplexité faible (5-10) : Focus sur la structure locale (petits clusters)
+        \item Perplexité élevée (30-50) : Capture la structure globale
+    \end{itemize}
+\end{itemize}
+
+\begin{warningbox}
+\textbf{Règle Empirique}
+
+La perplexité doit être inférieure au nombre de points :
+$$ 5 \leq \text{perplexity} < \frac{n}{3} $$
+
+Pour $n=10000$ points, tester : 30, 50, 100.
+\end{warningbox}
+
+\subsection{Nombre d'Itérations}
+
+\begin{itemize}
+    \item \textbf{Défaut} : 1000 itérations
+    \item \textbf{Recommandation} : Au moins 1000, souvent 2000-5000 pour convergence
+    \item \textbf{Indicateur} : Surveiller la valeur de KL divergence (doit décroître)
+\end{itemize}
+
+\subsection{Learning Rate}
+
+\begin{itemize}
+    \item \textbf{Défaut} : 200
+    \item \textbf{Plage} : 10 à 1000
+    \item Si les points s'agglomèrent en boule : augmenter
+    \item Si les points explosent : diminuer
+\end{itemize}
+
+\section{Avantages et Limites}
+
+\subsection{Avantages}
+
+\begin{itemize}
+    \item Excellente préservation de la structure locale
+    \item Révèle des clusters non linéaires
+    \item Visualisations très intuitives
+\end{itemize}
+
+\subsection{Limites Critiques}
+
+\begin{warningbox}
+\textbf{Limitations Importantes}
+
+\begin{enumerate}
+    \item \textbf{Non déterministe} : Deux exécutions donnent des résultats différents
+    \item \textbf{Distances non préservées} : Les distances en 2D n'ont PAS de sens absolu
+    \item \textbf{Lent} : Complexité $O(n^2)$, difficile au-delà de 10 000 points
+    \item \textbf{Pas de prédiction} : Ne peut pas projeter de nouvelles données
+\end{enumerate}
+\end{warningbox}
+
+\section{Exemple de Code Python}
+
+\begin{codebox}
+\begin{lstlisting}
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Supposons que Z est votre espace latent (n_samples, n_features)
+# Par exemple, Z de dimension (10000, 32)
+
+# 1. CONFIGURATION
+tsne = TSNE(
+    n_components=2,      # Projection en 2D
+    perplexity=30,       # Nombre de voisins effectifs
+    n_iter=1000,         # Nombre d'itérations
+    random_state=42,     # Pour reproductibilité
+    verbose=1            # Affiche la progression
+)
+
+# 2. PROJECTION
+print("Calcul du t-SNE en cours...")
+Z_tsne = tsne.fit_transform(Z)
+
+# 3. VISUALISATION
+plt.figure(figsize=(10, 8))
+
+# Colorer par les vraies étiquettes (si disponibles)
+scatter = plt.scatter(Z_tsne[:, 0], Z_tsne[:, 1], 
+                     c=y, cmap='viridis', 
+                     alpha=0.6, s=10)
+plt.colorbar(scatter, label='Machine Failure')
+plt.title('Visualisation t-SNE de l\'Espace Latent')
+plt.xlabel('t-SNE Dimension 1')
+plt.ylabel('t-SNE Dimension 2')
+plt.grid(True, alpha=0.3)
+plt.show()
+
+# 4. ANALYSE PAR CLUSTER (si clustering fait)
+# Exemple avec les clusters K-Means
+plt.figure(figsize=(10, 8))
+for cluster_id in np.unique(clusters):
+    mask = clusters == cluster_id
+    plt.scatter(Z_tsne[mask, 0], Z_tsne[mask, 1], 
+               label=f'Cluster {cluster_id}', alpha=0.6, s=10)
+plt.legend()
+plt.title('t-SNE coloré par Clusters K-Means')
+plt.show()
+\end{lstlisting}
+\end{codebox}
+
+\section{Cas d'Usage dans Votre Projet}
+
+\subsection{Votre Situation Actuelle}
+
+\begin{itemize}
+    \item Espace latent : \textbf{2 dimensions} (déjà visualisable)
+    \item Clusters K-Means : 3 clusters identifiés
+    \item Clusters DBSCAN : 2 clusters identifiés
+\end{itemize}
+
+\textbf{Conclusion :} t-SNE n'est \textbf{pas nécessaire} pour votre cas actuel.
+
+\subsection{Quand Serait-il Utile ?}
+
+Si vous aviez un espace latent de dimension supérieure (ex: 32D), t-SNE permettrait de :
+\begin{enumerate}
+    \item Visualiser la séparation entre Normal/Dégradé/Panne
+    \item Vérifier si les clusters trouvés par K-Means sont bien séparés visuellement
+    \item Identifier des sous-structures non détectées
+\end{enumerate}
+
+\section{Conclusion}
+
+t-SNE est un outil puissant de \textbf{visualisation exploratoire} pour comprendre la structure de données haute dimension. Cependant :
+
+\begin{itemize}
+    \item Ne l'utilisez \textbf{pas} pour du machine learning (pas de prédiction)
+    \item Ne l'utilisez \textbf{pas} si votre espace est déjà 2D ou 3D
+    \item Utilisez-le pour \textbf{explorer} et \textbf{communiquer} vos résultats
+\end{itemize}
+
+Pour votre projet avec un espace latent 2D, vous pouvez directement visualiser $Z$ sans t-SNE.
+
+\end{document}

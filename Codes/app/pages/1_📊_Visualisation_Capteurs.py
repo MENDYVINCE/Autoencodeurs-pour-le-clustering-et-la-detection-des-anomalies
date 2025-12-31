@@ -54,6 +54,51 @@ def load_and_prepare_data():
 st.title("📊 Tableau de Bord - Analyse Exploratoire des Données")
 st.markdown("Cette page présente une analyse visuelle du jeu de données de maintenance prédictive.")
 
+# --- Lien vers le rapport YData Profiling ---
+st.info(
+    "📊 **Analyse Exploratoire Détaillée** : Pour consulter le rapport complet "
+    "généré par YData Profiling (distributions, corrélations, valeurs manquantes, etc.), "
+    "cliquez sur le bouton ci-dessous."
+)
+
+# Bouton pour afficher le rapport
+import streamlit.components.v1 as components
+from pathlib import Path
+
+# Chemin vers le fichier HTML
+html_path = Path(__file__).parent.parent / 'assets' / 'output.html'
+
+# Initialiser l'état pour afficher/masquer le rapport
+if 'show_profiling' not in st.session_state:
+    st.session_state.show_profiling = False
+
+if html_path.exists():
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if not st.session_state.show_profiling:
+            if st.button("📈 Ouvrir le Rapport YData Profiling", use_container_width=True, type="primary"):
+                st.session_state.show_profiling = True
+                st.rerun()
+        else:
+            if st.button("❌ Fermer le Rapport", use_container_width=True, type="secondary"):
+                st.session_state.show_profiling = False
+                st.rerun()
+    
+    # Afficher le rapport si demandé
+    if st.session_state.show_profiling:
+        st.markdown("### 📊 Rapport YData Profiling")
+        # Lire le contenu HTML
+        with open(html_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Afficher dans un iframe avec hauteur augmentée
+        components.html(html_content, height=1200, scrolling=True)
+else:
+    st.error(f"❌ Le fichier de rapport n'a pas été trouvé : {html_path}")
+
+st.markdown("---")
+
+
 df = load_and_prepare_data()
 
 if df is not None:

@@ -1,0 +1,257 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{graphicx}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,calc}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{hmargin=2.5cm,vmargin=2.5cm}
+
+% Configuration des boîtes
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{conceptbox}[1][]{
+  colback=blue!5!white,
+  colframe=blue!75!black,
+  title={\textbf{💡 Concept Clé}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{mathbox}[1][]{
+  colback=green!5!white,
+  colframe=green!60!black,
+  title={\textbf{📐 Fondement Mathématique}},
+  fonttitle=\bfseries,
+  enhanced,
+  drop shadow,
+  breakable,
+  #1
+}
+
+\newtcolorbox{codebox}[1][]{
+  colback=gray!5!white,
+  colframe=gray!75!black,
+  title={\textbf{💻 Implémentation Python}},
+  fonttitle=\bfseries,
+  breakable,
+  #1
+}
+
+\newtcolorbox{warningbox}[1][]{
+  colback=red!5!white,
+  colframe=red!75!black,
+  title={\textbf{⚠️ Attention}},
+  fonttitle=\bfseries,
+  enhanced,
+  #1
+}
+
+% Configuration du code
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{pythonstyle}{
+    language=Python,
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=pythonstyle}
+
+\title{\textbf{Local Outlier Factor (LOF)} \\ \large Détection d'Anomalies basée sur la Densité Locale}
+\author{Cours de Machine Learning Non Supervisé}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+Le \textbf{Local Outlier Factor} (LOF) (Breunig et al., 2000) est une méthode pionnière de détection d'anomalies. Contrairement aux méthodes globaux (qui comparent un point à tous les autres), LOF s'intéresse à la \textbf{densité locale}.
+
+\begin{conceptbox}
+\textbf{Intuition Fondamentale :}
+
+Une anomalie est un point qui est \textbf{plus isolé} que ses voisins.
+
+\begin{itemize}
+    \item Si un point a une densité similaire à celle de ses voisins, c'est un point normal.
+    \item Si sa densité est \textbf{beaucoup plus faible} que celle de ses voisins, c'est une anomalie.
+\end{itemize}
+
+L'avantage majeur est de pouvoir détecter des anomalies dans des zones de densités différentes, là où un seuil de distance global échouerait.
+\end{conceptbox}
+
+\section{Principe de Fonctionnement}
+
+LOF calcule un score pour chaque point, basé sur le rapport entre sa densité locale et la densité locale moyenne de ses $k$ plus proches voisins.
+
+\subsection{Illustration}
+
+\begin{center}
+\begin{tikzpicture}[scale=1]
+    % Cluster dense
+    \foreach \i in {1,...,15}
+      \fill[blue!70] ({random(0,2)+0.5}, {random(0,2)+0.5}) circle (2pt);
+    \node at (1.5,1.5) [blue] {Cluster dense $C_1$};
+
+    % Cluster épars
+    \foreach \i in {1,...,10}
+      \fill[blue!70] ({random(4,6)+0.5}, {random(4,6)+0.5}) circle (2pt);
+    \node at (5.5,5.5) [blue] {Cluster épars $C_2$};
+    
+    % Anomalie locale près de C1
+    \fill[red] (3.5, 2.5) circle (3pt) node[right, red] {$O_1$};
+    
+    % Anomalie globale
+    \fill[red] (6, 1) circle (3pt) node[right, red] {$O_2$};
+\end{tikzpicture}
+
+\textit{Figure 1 : LOF permet de détecter $O_1$ comme anomalie relative à $C_1$, même si la distance entre points dans $C_2$ est similaire.}
+\end{center}
+
+\section{Fondements Mathématiques}
+
+L'algorithme se déroule en 4 étapes clés :
+
+\subsection{1. k-Distance et Voisins}
+Pour un point $p$ et un entier $k$, la $k$-distance($p$) est la distance au $k$-ième voisin le plus proche.
+$N_k(p)$ est l'ensemble de ces $k$ voisins (peut être $>k$ en cas d'égalité).
+
+\subsection{2. Reachability Distance (Distance d'Atteignabilité)}
+C'est une distance "lissée". Pour éviter les problèmes si des points sont superposés :
+$$ \text{reach-dist}_k(p, o) = \max\{ \text{k-distance}(o), d(p, o) \} $$
+où $o \in N_k(p)$.
+Intuition : Si $p$ est très proche de $o$, on utilise la k-distance de $o$ comme "bulle de protection" minimale.
+
+\subsection{3. Local Reachability Density (LRD - Densité Locale)}
+La densité locale de $p$ est l'inverse de la distance d'atteignabilité moyenne de $p$ par rapport à ses voisins :
+$$ \text{lrd}_k(p) = \frac{|N_k(p)|}{\sum_{o \in N_k(p)} \text{reach-dist}_k(p, o)} $$
+
+\subsection{4. Local Outlier Factor (LOF)}
+Le score final compare la LRD de $p$ à celles de ses voisins $o$ :
+$$ \text{LOF}_k(p) = \frac{\sum_{o \in N_k(p)} \frac{\text{lrd}_k(o)}{\text{lrd}_k(p)}}{|N_k(p)|} = \frac{\text{Moyenne LRD voisins}}{\text{LRD du point}} $$
+
+\begin{mathbox}
+\textbf{Interprétation du Score LOF}
+
+\begin{itemize}
+    \item $\text{LOF} \approx 1$ : Densité similaire aux voisins $\Rightarrow$ \textbf{Normal}.
+    \item $\text{LOF} \ll 1$ : Point plus dense que ses voisins $\Rightarrow$ \textbf{Intérieur de cluster}.
+    \item $\text{LOF} \gg 1$ : Densité beaucoup plus faible que les voisins $\Rightarrow$ \textbf{Anomalie}.
+\end{itemize}
+En pratique, un seuil $> 1.5$ ou $> 2.0$ est souvent utilisé pour flagger une anomalie.
+\end{mathbox}
+
+\section{Hyperparamètre Principal : n\_neighbors}
+
+Le seul paramètre critique est $k$ (\texttt{n\_neighbors} dans Scikit-Learn).
+\begin{itemize}
+    \item $k$ trop petit (ex: 1 ou 2) : Sensible au bruit, faux positifs locaux.
+    \item $k$ trop grand : L'effet local se dilue, on tend vers une approche globale.
+    \item \textbf{Recommandation} : Souvent $k=20$ par défaut. Breunig suggère une plage (minPts, maxPts).
+\end{itemize}
+
+\section{Comparaison avec Isolation Forest et SVM}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Méthode} & \textbf{Force} & \textbf{Faiblesse} \\
+\hline
+Isolation Forest & Rapide, Scalable, Global & Rate les anomalies locales denses \\
+One-Class SVM & Frontières complexes & Lent, Paramétrage difficile \\
+\textbf{LOF} & \textbf{Détecte anomalies locales} & Lent ($O(n^2)$), Pas de prédiction \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{warningbox}
+\textbf{Nouveauté et Prédiction :}
+Standard LOF est conçu pour la détection d'outliers dans un dataset statique (\textit{transductif}). Il ne prédit pas nativement sur de nouvelles données sans recalculer les distances.
+$\Rightarrow$ Scikit-Learn propose \texttt{novelty=True} pour l'utiliser comme un estimateur qui peut appeler \texttt{predict()}, mais attention : cela change légèrement la logique.
+\end{warningbox}
+
+\section{Exemple de Code Python}
+
+\begin{codebox}
+\begin{lstlisting}
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import classification_report, confusion_matrix
+import numpy as np
+
+# 1. PRÉPARATION
+# Les méthodes de distance nécessitent une normalisation !
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# 2. MODÉLISATION
+# n_neighbors=20 : standard
+# contamination=0.03 : on s'attend à 3% d'anomalies
+# novelty=False : On detecte sur le jeu d'entrainement lui-même (classique)
+lof = LocalOutlierFactor(
+    n_neighbors=20, 
+    contamination=0.03,
+    n_jobs=-1
+)
+
+print("Calcul du LOF...")
+# fit_predict existe pour le mode outlier detection
+preds = lof.fit_predict(X_scaled) 
+
+# 3. CONVERSION
+# LOF : 1 = Normal, -1 = Anomalie
+y_pred_lof = np.where(preds == -1, 1, 0)
+
+# Extraire les scores bruts (negative_outlier_factor_)
+# Plus c'est négatif, plus c'est une anomalie (dans sklearn implementation)
+lof_scores = -lof.negative_outlier_factor_ 
+
+# 4. ÉVALUATION
+print("Matrice de Confusion :")
+print(confusion_matrix(y, y_pred_lof))
+
+print("\nRapport :")
+print(classification_report(y, y_pred_lof, target_names=['Normal', 'Panne']))
+
+# Note : lof_scores > 1.5 indiquent généralement une anomalie
+print(f"Score LOF max : {lof_scores.max():.2f}")
+print(f"Score LOF moyen : {lof_scores.mean():.2f}")
+\end{lstlisting}
+\end{codebox}
+
+\section{Conclusion}
+
+LOF est l'outil de choix lorsque les anomalies sont contextuelles (ex: une température de 20°C est normale en été, mais anormale en hiver). Sa capacité à s'adapter à la densité locale le rend supérieur aux approches globales dans des datasets hétérogènes, au prix d'un coût de calcul plus élevé.
+
+\end{document}
