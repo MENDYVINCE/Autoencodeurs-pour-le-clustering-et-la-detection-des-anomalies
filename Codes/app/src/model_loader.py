@@ -93,6 +93,22 @@ class ModelLoader:
             print(f"Erreur chargement LOF : {e}")
             return False
     
+    def load_lstm(self):
+        """Charge le LSTM Autoencoder et son scaler."""
+        try:
+            # Noms de fichiers pour LSTM
+            lstm_path = os.path.join(self.models_dir, 'autoencodeur_lstm', 'autoencoder_lstm.keras')
+            scaler_path = os.path.join(self.models_dir, 'autoencodeur_lstm', 'scaler.pkl')
+            
+            self.models['lstm'] = keras.models.load_model(lstm_path)
+            self.scalers['lstm'] = joblib.load(scaler_path)
+            
+            print("LSTM Autoencoder chargé")
+            return True
+        except Exception as e:
+            print(f"Erreur chargement LSTM : {e}")
+            return False
+    
     def load_all(self):
         """
         Charge tous les modèles disponibles.
@@ -107,12 +123,13 @@ class ModelLoader:
         print("="*60)
         
         self.load_autoencoder()
+        self.load_lstm()
         self.load_isolation_forest()
         self.load_ocsvm()
         self.load_lof()
         
         print("="*60)
-        print(f"Modèles chargés : {len(self.models)}/4")
+        print(f"Modèles chargés : {len(self.models)}/5")
         print("="*60)
         
         return {
